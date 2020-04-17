@@ -1,0 +1,36 @@
+# Ceph cluster monitors group name (in Ansible inventory)
+# Any hosts belonging to this group will:
+# * be excluded form the K8S-only tasks (e.g. no manifest deployment attempt)
+# * be accessed to gather cluster information (key, cid, ...)
+# * be added to the list 'ceph_client_k8s_mons' if the list is empty
+ceph_client_k8s_mons_group: "ceph_mons"
+
+# Ceph cluster monitors
+# If this list is empty, hosts belonging to the group 'ceph_client_k8s_mons_group' 
+# will be dynamically added during the role execution.
+ceph_client_k8s_mons: []
+
+# Ceph identity username
+ceph_client_k8s_user: "admin"
+
+# Ceph identity password
+# If undefined, null or emtpy, the role will extract it from the cluster monitors.
+ceph_client_k8s_key: null
+
+# Ceph pool name.
+ceph_client_k8s_pool: "cephfs_data"
+
+# Ceph cluster identifier.
+ceph_client_k8s_cid: null
+
+# K8S StorageClass provider.
+ceph_client_k8s_provider: "rbd"
+
+# K8S resources prefix (for StorageClass, Secret, VolumeClaim, ...)
+ceph_client_k8s_prefix: "{{ ceph_client_k8s_provider }}"
+
+# Name of the Ceph identity password secret
+ceph_client_k8s_secret: "{{ ceph_client_k8s_prefix }}-secret"
+
+# K8S StorageClass name
+ceph_client_k8s_sc: "{{ ceph_client_k8s_prefix }}-sc"

@@ -1,0 +1,64 @@
+- name: Create provider temporay Helm values files (ceph-csi-rdb)
+  tempfile:
+    state: file
+  register: _values
+  tags:
+    - apply
+
+
+- name: Create provider temporay repository directory (ceph-csi-rdb)
+  tempfile:
+    state: directory
+  register: _repository
+  tags:
+    - apply
+
+
+- name: Clone provider repository (ceph-csi-rdb)
+  shell: >
+    git clone https://github.com/ceph/ceph-csi {{ _repository.path }}
+  tags:
+    - apply
+
+
+- name: Template provider (ceph-csi-rdb)
+  template:
+    src: templates/ceph_client_k8s_provider-ceph-csi-rbd.values.yml.j2
+    dest: "{{ _values.path }}"
+  tags:
+    - apply
+
+
+- name: Install provider (ceph-csi-rdb)
+  shell: >
+    helm install "{{ ceph_client_k8s_provider }}"
+    --namespace "{{ ceph_client_k8s_provider }}"
+    --values {{ _values.path }}
+    {{ _repository.path }}/charts/ceph-csi-rbd
+  register: _install
+  failed_when:
+    - _install.rc != 0 and not "cannot re-use a name that is still in use" in _install.stderr
+  tags:
+    - apply
+
+
+- name: Cleanup provider temporary files (ceph-csi-rdb)
+  file:
+    path: "{{ item }}"
+    state: absent
+  with_items:
+    - "{{ _repository.path }}"
+    - "{{ _values.path }}"
+  tags:
+    - apply
+
+
+- name: Uninstall provider (ceph-csi-rdb)
+  shell: >
+    helm uninstall "{{ ceph_client_k8s_provider }}"
+    --namespace "{{ ceph_client_k8s_provider }}"
+  register: _install
+  failed_when:
+    - _install.rc != 0 and not "cannot re-use a name that is still in use" in _install.stderr
+  tags:
+    - delete

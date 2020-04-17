@@ -1,0 +1,30 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ ceph_client_k8s_secret }}
+stringData:
+  userID: {{ ceph_client_k8s_user }}
+  userKey: {{ ceph_client_k8s_key }}
+
+---
+
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: {{ ceph_client_k8s_sc }}
+provisioner: rbd.csi.ceph.com
+parameters:
+  clusterID: {{ ceph_client_k8s_cid }}
+  pool: {{ ceph_client_k8s_pool }}
+  imageFeatures: layering
+  csi.storage.k8s.io/provisioner-secret-name: {{ ceph_client_k8s_secret }}
+  csi.storage.k8s.io/provisioner-secret-namespace: default
+  csi.storage.k8s.io/controller-expand-secret-name: {{ ceph_client_k8s_secret }}
+  csi.storage.k8s.io/controller-expand-secret-namespace: default
+  csi.storage.k8s.io/node-stage-secret-name: {{ ceph_client_k8s_secret }}
+  csi.storage.k8s.io/node-stage-secret-namespace: default
+  csi.storage.k8s.io/fstype: ext4
+reclaimPolicy: Delete
+allowVolumeExpansion: true
+mountOptions:
+  - discard

@@ -1,0 +1,16 @@
+- name: Extract client key
+  register: _key
+  shell: >
+    cat /etc/ceph/ceph.client.{{ ceph_client_k8s_user | default('admin') }}.keyring | grep 'key\s*=\s*' | awk '{print $3}'
+
+
+- name: Extract cluster identifier
+  register: _cid
+  shell: >
+    ceph status | grep 'id:' | awk '{print $2}'
+
+
+- name: Set facts
+  set_fact:
+    ceph_client_k8s_key: "{{ _key.stdout | default('') }}"
+    ceph_client_k8s_cid: "{{ _cid.stdout | default('') }}"

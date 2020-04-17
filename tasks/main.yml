@@ -1,0 +1,46 @@
+- name: Remove existing objects
+  shell: >
+    kubectl delete -n {{ item.ns }} {{ item.type }} {{ item.name }}
+  register: _delete
+  failed_when:
+    - _delete.rc != 0 and not "not found" in _delete.stderr
+  with_items:
+    - { type: sc,     name: "{{ ceph_client_k8s_sc }}",     ns: default}
+    - { type: secret, name: "{{ ceph_client_k8s_secret }}", ns: default }
+  tags:
+    - apply
+    - delete
+
+
+- name: Include provider tasks
+  include_tasks:
+    file: "provider-{{ ceph_client_k8s_provider }}.yml"
+  tags:
+    - apply
+    - delete
+
+
+- name: Create manifest file
+  tempfile:
+    state: file
+  register: _manifest
+  tags:
+    - apply
+
+
+- name: Template manifest file
+  template:
+    src: "provider-{{ ceph_client_k8s_provider }}.yml.j2"
+    dest: "{{ _manifest.path }}"
+  tags:
+    - apply
+
+
+- name: Apply manifest
+  shell: >
+    kubectl create -f {{ _manifest.path }}
+  register: _create
+  failed_when:
+    - _create.rc != 0 and not "already exists" in _create.stderr
+  tags:
+    - apply

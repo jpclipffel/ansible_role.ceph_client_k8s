@@ -1,0 +1,6 @@
+- name: Nothing to to for provider (rdb)
+  debug:
+    msg: "Nothing to to for provider (rdb)"
+  tags:
+    - apply
+    - delete
