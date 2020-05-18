@@ -14,16 +14,18 @@ ceph_client_k8s_mons: []
 ceph_client_k8s_user: "admin"
 
 # Ceph identity password
-# If undefined, null or emtpy, the role will extract it from the cluster monitors.
+# This value can be found automatically by inlcuding the tasks file `ceph_facts.yml`.
 ceph_client_k8s_key: null
 
 # Ceph pool name.
 ceph_client_k8s_pool: "cephfs_data"
 
-# Ceph cluster identifier.
+# Ceph cluster identifier
+# Required only when using the Cepg provisioner.
+# This value can be found automatically by inlcuding the tasks file `ceph_facts.yml`.
 ceph_client_k8s_cid: null
 
-# K8S StorageClass provider.
+# K8S StorageClass provider
 ceph_client_k8s_provider: "rbd"
 
 # K8S resources prefix (for StorageClass, Secret, VolumeClaim, ...)
