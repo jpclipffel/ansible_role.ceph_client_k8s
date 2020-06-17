@@ -14,7 +14,7 @@ ceph_client_k8s_mons: []
 ceph_client_k8s_user: "admin"
 
 # Ceph identity password
-# This value can be found automatically by inlcuding the tasks file `ceph_facts.yml`.
+# This value can be discovered automatically by inlcuding the tasks file `ceph_facts.yml`.
 ceph_client_k8s_key: null
 
 # Ceph pool name.
@@ -22,7 +22,7 @@ ceph_client_k8s_pool: "cephfs_data"
 
 # Ceph cluster identifier
 # Required only when using the Cepg provisioner.
-# This value can be found automatically by inlcuding the tasks file `ceph_facts.yml`.
+# This value can be discovered automatically by inlcuding the tasks file `ceph_facts.yml`.
 ceph_client_k8s_cid: null
 
 # K8S StorageClass provider
