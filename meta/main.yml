@@ -1,0 +1,3 @@
+galaxy_info:
+  role_name: ceph_client_k8s
+  description: Ansible role to setup a Ceph StorageClass on a Kubernetes cluster.
