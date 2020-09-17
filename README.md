@@ -2,9 +2,16 @@
 
 Setup a Ceph `StorageClass` on Kubernetes clusters.
 
-## Usage
+You can include two different components when using this role:
 
-To automatically collect required Ceph cluster facts:
+1 - To setup the `StorageClass`:
+
+```yaml
+include_role:
+  name: ceph_client_k8s
+```
+
+2 - To collect Ceph cluster key and cluster identifier:
 
 ```yaml
 include_role:
@@ -12,44 +19,53 @@ include_role:
   tasks_from: ceph_facts.yml
 ```
 
-To setup the `StorageClass`:
-
-```yaml
-include_role:
-  name: ceph_client_k8s
-  tasks_from: main.yml
-```
-
 ## Tags
 
-| Tag      | Description                         |
-|----------|-------------------------------------|
-| `apply`  | Create the requested `StorageClass` |
-| `delete` | Remove the requested `StorageClass` |
+| Tag      | Description                                                                                     |
+|----------|-------------------------------------------------------------------------------------------------|
+| `apply`  | Create the `StorageClass`, associated `Secret` and update the `ceph-csi-config-rbd` `ConfigMap` |
+| `delete` | Remove the `StorageClass`, associated `Secret` and update the `ceph-csi-config-rbd` `ConfigMap` |
 
 ## Variables
 
-Role variables are prefixed with `ceph_client_k8s_`.
+Generic configuration:
 
-| Variable                     | Type               | Required | Defaut                         | Description                                             |
-|------------------------------|--------------------|----------|--------------------------------|---------------------------------------------------------|
-| `ceph_client_k8s_mons_group` | `string`           | No       | `ceph_mons`                    | Ceph monitors inventory group                           |
-| `ceph_client_k8s_mons`       | `list` of `string` | No       | `[]` or `ceph_client_k8s_mons` | List of Ceph monitors                                   |
-| `ceph_client_k8s_user`       | `string`           | No       | `admin`                        | Ceph user name                                          |
-| `ceph_client_k8s_key`        | `string`           | No       | `string`                       | Ceph user key                                           |
-| `ceph_client_k8s_pool`       | `string`           | No       | `cephfs_data`                  | Ceph RBD pool                                           |
-| `ceph_client_k8s_cid`        | `string`           | No       | `null`                         | Ceph cluster ID (only for Ceph's CSI RBD provisioner)   |
-| `ceph_client_k8s_provider`   | `string`           | No       | `rbd`                          | K8S RBD provisioner (`rbd` or `ceph-csi-rbd`)           |
-| `ceph_client_k8s_prefix`     | `string`           | No       | `rbd`                          | K8S resources name prefix (e.g. `rbd-sc`, `rbd-secret`) |
-| `ceph_client_k8s_secret`     | `string`           | No       | `rbd-secret`                   | K8S `Secret` name                                       |
-| `ceph_client_k8s_sc`         | `string`           | No       | `rbd-sc`                       | K8S `StorageClass` name                                 |
+| Variable                               | Type               | Required | Defaut                           | Description                                                  |
+|----------------------------------------|--------------------|----------|----------------------------------|--------------------------------------------------------------|
+| `ceph_client_k8s_provider`             | `string`           | No       | `ceph-csi-rbd`                   | RBD provisioner (`ceph-csi-rbd` or `rbd` for in-tree driver) |
+| `ceph_client_k8s_sc_namespace`         | `string`           | No       | `default`                        | `StorageClass` namespace                                     |
+| `ceph_client_k8s_sc_name`              | `string`           | No       | `{{ ceph_client_k8s_provider }}` | `StorageClass` name                                          |
+| `ceph_client_k8s_sc_default`           | `bool`             | No       | `true`                           | Set the `StorageClass` as the default one                    |
+| `ceph_client_k8s_mons`                 | `list` of `string` | Yes      | -                                | List of Ceph monitors                                        |
+| `ceph_client_k8s_pool`                 | `string`           | No       | `cephfs_data`                    | Ceph pool name                                               |
+| `ceph_client_k8s_fstype`               | `string`           | No       | `ext4`                           | File system type for new volumes                             |
+| `ceph_client_k8s_reclaimPolicy`        | `string`           | No       | `Delete`                         | Volume's `ReclaimPolicy`                                     |
+| `ceph_client_k8s_allowVolumeExpansion` | `bool`             | No       | `true`                           | Allow or not the expansion of created volumes                |
+
+Authentication:
+
+| Variable                           | Type     | Required | Defaut                                 | Description                   |
+|------------------------------------|----------|----------|----------------------------------------|-------------------------------|
+| `ceph_client_k8s_secret_namespace` | `string` | No       | `default`                              | `Secret` namespace            |
+| `ceph_client_k8s_secret_name`      | `string` | No       | `{{ ceph_client_k8s_sc_name }}-secret` | `Secret` name                 |
+| `ceph_client_k8s_user`             | `string` | Yes      | -                                      | Ceph pool user name           |
+| `ceph_client_k8s_key`              | `string` | Yes      | -                                      | Ceph pool user key (password) |
+
+CSI-specific:
+
+| Variable                        | Type     | Required | Defaut        | Description                                |
+|---------------------------------|----------|----------|---------------|--------------------------------------------|
+| `ceph_client_k8s_csi_namespace` | `string` | No       | `kube-system` | Namespace where `ceph-csi-rbd` is deployed |
+| `ceph_client_k8s_csi_cid`       | `string` | Yes      | -             | Ceph cluster identifier (name)             |
 
 ## Templates
 
-| Template                       | Description                                                        |
-|--------------------------------|--------------------------------------------------------------------|
-| `provider-rbd.yml.j2`          | K8S manifest, using the standard provisioner (`kubernetes.io/rbd`) |
-| `provider-ceph-csi-rbd.yml.j2` | K8S manifest, using Ceph's own provisioner (`rbd.csi.ceph.com`)    |
+| Template                           | Description                                                                          |
+|------------------------------------|--------------------------------------------------------------------------------------|
+| `ceph-csi-rbd/cluster.json.j2`     | A cluster configuration block; Will be injected into `ceph-csi-rbd/configmap.yml.j2` |
+| `ceph-csi-rbd/configmap.yml.j2`    | Clusters configuration objects (holds all clusters definition)                       |
+| `ceph-csi-rbd/secret.yml.j2`       | Secret template                                                                      |
+| `ceph-csi-rbd/storageclass.yml.j2` | StorageClass template                                                                |
 
 ## Tasks sequence
 
@@ -57,5 +73,6 @@ Role variables are prefixed with `ceph_client_k8s_`.
 main.yml
 |
 | ------------------------ tags: apply, delete --
+|
 \__ provider-{{ ceph_client_k8s_provider }}.yml
 ```
