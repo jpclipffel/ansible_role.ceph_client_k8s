@@ -54,7 +54,7 @@
   when:
     - inventory_hostname == k8s_primary_master_name
     - _csirbd_cluster_exists and 'force_cfg' not in ansible_run_tags
-  tags: [apply]
+  tags: [never, apply]
 
 
 - name: Add cluster config 
@@ -63,7 +63,7 @@
   when:
     - inventory_hostname == k8s_primary_master_name
     - not _csirbd_cluster_exists or 'force' in ansible_run_tags or 'force_cfg' in ansible_run_tags
-  tags: [apply]
+  tags: [never, apply]
 
 
 - name: Apply cluster ConfigMap
@@ -73,7 +73,7 @@
   when:
     - inventory_hostname == k8s_primary_master_name
     - not _csirbd_cluster_exists or 'force' in ansible_run_tags or 'force_cfg' in ansible_run_tags
-  tags: [apply]
+  tags: [never, apply]
 
 
 # --- Apply Secret ---
@@ -84,7 +84,7 @@
   when:
     - inventory_hostname == k8s_primary_master_name
     - _csirbd_secret_exists and 'force_secret' not in ansible_run_tags
-  tags: [apply]
+  tags: [never, apply]
 
 
 - name: Apply cluster Secret
@@ -94,7 +94,7 @@
   when:
     - inventory_hostname == k8s_primary_master_name
     - not _csirbd_secret_exists or 'force' in ansible_run_tags or 'force_secret' in ansible_run_tags
-  tags: [apply]
+  tags: [never, apply]
 
 
 # --- Apply StorageClass ---
@@ -105,7 +105,7 @@
   when:
     - inventory_hostname == k8s_primary_master_name
     - _csirbd_sc_exists and 'force_sc' not in ansible_run_tags
-  tags: [apply]
+  tags: [never, apply]
 
 
 - name: Apply StorageClass
@@ -115,7 +115,7 @@
   when:
     - inventory_hostname == k8s_primary_master_name
     - not _csirbd_sc_exists or 'force' in ansible_run_tags or 'force_sc' in ansible_run_tags
-  tags: [apply]
+  tags: [never, apply]
 
 
 # --- Delete StorageClass ---
@@ -127,7 +127,7 @@
     state: absent
   when:
     - inventory_hostname == k8s_primary_master_name
-  tags: [delete]
+  tags: [never, delete]
 
 
 # --- Delete Secret ---
@@ -140,7 +140,7 @@
     state: absent
   when:
     - inventory_hostname == k8s_primary_master_name
-  tags: [delete]
+  tags: [never, delete]
 
 
 # --- Delete / Update ConfigMap ---
@@ -153,7 +153,7 @@
   when:
     - inventory_hostname == k8s_primary_master_name
     - _csirbd_cluster_exists
-  tags: [delete]
+  tags: [never, delete]
 
 
 - name: Apply cluster ConfigMap
@@ -163,7 +163,7 @@
   when:
     - inventory_hostname == k8s_primary_master_name
     - _csirbd_cluster_exists
-  tags: [delete]
+  tags: [never, delete]
 
 
 
