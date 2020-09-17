@@ -1,4 +1,4 @@
-# IaC / Ansible / Roles / Ceph client for Kubernetes
+# # Ansible role: `ceph_client_k8s`
 
 Setup a Ceph `StorageClass` on Kubernetes clusters.
 
