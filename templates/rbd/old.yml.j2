@@ -7,14 +7,14 @@ data:
   key: {{ ceph_client_k8s_key | b64encode }}
 type: kubernetes.io/rbd
 
----
 
+---
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
-  name: {{ ceph_client_k8s_sc }}
+  name: {{ ceph_client_k8s_sc_name }}
   annotations:
-    storageclass.kubernetes.io/is-default-class: "true"
+    storageclass.kubernetes.io/is-default-class: "{{ ceph_client_k8s_sc_default }}"
 allowVolumeExpansion: true
 provisioner: kubernetes.io/rbd
 parameters:
