@@ -1,3 +1,56 @@
+# code: language=Ansible insertSpaces=true tabSize=2
+
+
+- name: Assertions
+  assert:
+    that:
+      # K8S master node
+      - k8s_primary_master_name is defined
+      # Provider
+      - ceph_client_k8s_provider | default('') | length > 0
+      # K8S - StorageClass
+      - ceph_client_k8s_sc_namespace | default('') | length > 0
+      - ceph_client_k8s_sc_name | default('') | length > 0
+      - ceph_client_k8s_mons | default('') | length > 0
+      - ceph_client_k8s_pool | default('') | length > 0
+      # K8S - Secret
+      - ceph_client_k8s_secret_namespace | default('') | length > 0
+      - ceph_client_k8s_secret_name | default('') | length > 0
+      - ceph_client_k8s_user | default('') | length > 0
+      - ceph_client_k8s_key | default('') | length > 0
+  when:
+    - inventory_hostname == k8s_primary_master_name
+  tags: [always]
+
+
+- name: Include provider tasks
+  include_tasks:
+    file: "provider-{{ ceph_client_k8s_provider }}.yml"
+  when:
+    - inventory_hostname == k8s_primary_master_name
+  tags: [apply, delete]
+
+
+
+
+# - name: Apply manifest
+#   k8s:
+#     definition: "{{ lookup('template', 'provider-' + ceph_client_k8s_provider + '.yml.j2') }}"
+#     state: present
+#   when:
+#     - inventory_hostname == k8s_primary_master_name
+#   tags: [apply, delete]
+
+
+# - name: Delete manifest
+#   k8s:
+#     definition: "{{ lookup('template', 'provider-' + ceph_client_k8s_provider + '.yml.j2') }}"
+#     state: absent
+#   when:
+#     - inventory_hostname == k8s_primary_master_name
+#   tags: [apply, delete]
+
+
 # - name: Remove existing objects
 #   shell: >
 #     kubectl delete -n {{ item.ns }} {{ item.type }} {{ item.name }}
@@ -12,13 +65,15 @@
 #     - delete
 
 
-- name: Include provider tasks
-  include_tasks:
-    file: "provider-{{ ceph_client_k8s_provider }}.yml"
-  tags:
-    - never
-    - apply
-    - delete
+# - name: Include provider tasks
+#   include_tasks:
+#     file: "provider-{{ ceph_client_k8s_provider }}.yml"
+#   when:
+#     - inventory_hostname == k8s_primary_master_name
+#   tags:
+#     - never
+#     - apply
+#     - delete
 
 
 # - name: Create manifest file
@@ -45,20 +100,3 @@
 #     - _create.rc != 0 and not "already exists" in _create.stderr
 #   tags:
 #     - apply
-
-- name: Apply manifest
-  k8s:
-    definition: "{{ lookup('template', 'provider-' + ceph_client_k8s_provider + '.yml.j2') }}"
-    state: present
-  tags:
-    - never
-    - apply
-
-
-- name: Delete manifest
-  k8s:
-    definition: "{{ lookup('template', 'provider-' + ceph_client_k8s_provider + '.yml.j2') }}"
-    state: absent
-  tags:
-    - never
-    - delete
