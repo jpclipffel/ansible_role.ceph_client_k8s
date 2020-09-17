@@ -1,20 +1,40 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ceph-csi-config
+  namespace: "{{ ceph_client_k8s_csi_namespace }}"
+data:
+  config.json: |-
+    [
+      {
+        "clusterID": "{{ ceph_client_k8s_csi_cid }}",
+        "monitors": ["{{ ceph_client_k8s_mons | join(',') }}"]
+      }
+    ]
+
+
+---
 apiVersion: v1
 kind: Secret
 metadata:
   name: {{ ceph_client_k8s_secret }}
+  namespace: default
 stringData:
   userID: {{ ceph_client_k8s_user }}
   userKey: {{ ceph_client_k8s_key }}
 
----
 
+---
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
-  name: {{ ceph_client_k8s_sc }}
+  name: {{ ceph_client_k8s_sc_name }}
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "{{ ceph_client_k8s_sc_default }}"
 provisioner: rbd.csi.ceph.com
 parameters:
-  clusterID: {{ ceph_client_k8s_cid }}
+  clusterID: {{ ceph_client_k8s_csi_cid }}
   pool: {{ ceph_client_k8s_pool }}
   imageFeatures: layering
   csi.storage.k8s.io/provisioner-secret-name: {{ ceph_client_k8s_secret }}

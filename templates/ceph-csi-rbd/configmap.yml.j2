@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ceph-csi-config-rbd
+  namespace: "{{ ceph_client_k8s_csi_namespace }}"
+data:
+  config.json: |-
+{% filter indent(width=4) %}
+    {{ _csirbd_config | to_nice_json(indent=2) }}
+{% endfilter %}
