@@ -1,64 +1,252 @@
-- name: Create provider temporay Helm values files (ceph-csi-rdb)
-  tempfile:
-    state: file
-  register: _values
-  tags:
-    - apply
+# code: language=Ansible insertSpaces=true tabSize=2
 
 
-- name: Create provider temporay repository directory (ceph-csi-rdb)
-  tempfile:
-    state: directory
-  register: _repository
-  tags:
-    - apply
+- name: Assertions
+  assert:
+    that:
+      - ceph_client_k8s_csi_namespace | default('') | length > 0
+      - ceph_client_k8s_csi_cid | default('') | length > 0
+  when:
+    - inventory_hostname == k8s_primary_master_name
+  tags: [always]
 
 
-- name: Clone provider repository (ceph-csi-rdb)
-  shell: >
-    git clone https://github.com/ceph/ceph-csi {{ _repository.path }}
-  tags:
-    - apply
-
-
-- name: Template provider (ceph-csi-rdb)
-  template:
-    src: templates/ceph_client_k8s_provider-ceph-csi-rbd.values.yml.j2
-    dest: "{{ _values.path }}"
-  tags:
-    - apply
-
-
-- name: Install provider (ceph-csi-rdb)
-  shell: >
-    helm install "{{ ceph_client_k8s_provider }}"
-    --namespace "{{ ceph_client_k8s_provider }}"
-    --values {{ _values.path }}
-    {{ _repository.path }}/charts/ceph-csi-rbd
-  register: _install
-  failed_when:
-    - _install.rc != 0 and not "cannot re-use a name that is still in use" in _install.stderr
-  tags:
-    - apply
-
-
-- name: Cleanup provider temporary files (ceph-csi-rdb)
-  file:
-    path: "{{ item }}"
-    state: absent
+- name: Get resources info
+  k8s_info:
+    kind: "{{ item.kind }}"
+    name: "{{ item.name }}"
+    namespace: "{{ item.namespace }}"
+  register: "_csirbd_info"
   with_items:
-    - "{{ _repository.path }}"
-    - "{{ _values.path }}"
-  tags:
-    - apply
+    - { kind: "ConfigMap",    name: "ceph-csi-config-rbd",               namespace: "{{ ceph_client_k8s_csi_namespace }}"    }
+    - { kind: "Secret",       name: "{{ ceph_client_k8s_secret_name }}", namespace: "{{ ceph_client_k8s_secret_namespace }}" }
+    - { kind: "StorageClass", name: "{{ ceph_client_k8s_sc_name }}",     namespace: "{{ ceph_client_k8s_sc_namespace }}",    }
+  when:
+    - inventory_hostname == k8s_primary_master_name
+  tags: [always]
 
 
-- name: Uninstall provider (ceph-csi-rdb)
-  shell: >
-    helm uninstall "{{ ceph_client_k8s_provider }}"
-    --namespace "{{ ceph_client_k8s_provider }}"
-  register: _install
-  failed_when:
-    - _install.rc != 0 and not "cannot re-use a name that is still in use" in _install.stderr
-  tags:
-    - delete
+- name: Set resources info
+  set_fact:
+    _csirbd_config: "{{ _csirbd_info['results'][0]['resources'][0]['data']['config.json'] | default([]) | from_json }}"
+  when:
+    - inventory_hostname == k8s_primary_master_name
+  tags: [always]
+
+
+- name: Set resources status
+  set_fact:
+    _csirbd_cluster_exists: "{{ _csirbd_config | json_query(query_cluster) | default([]) | length > 0 }}"
+    _csirbd_secret_exists:  "{{ _csirbd_info['results'][1]['resources'] | length > 0 }}"
+    _csirbd_sc_exists:      "{{ _csirbd_info['results'][2]['resources'] | length > 0 }}"
+  vars:
+    query_cluster: "[?clusterID=='{{ ceph_client_k8s_csi_cid }}']"
+  when:
+    - inventory_hostname == k8s_primary_master_name
+  tags: [always]
+
+
+# --- Apply / Update ConfigMap ---
+
+- name: User notification
+  debug:
+    msg: "The ConfigMap ceph-csi-config-rbd in namespace kube-system already defines the clusterID {{ ceph_client_k8s_csi_cid }}. Include tag 'force_cfg' to force-update the cluster."
+  when:
+    - inventory_hostname == k8s_primary_master_name
+    - _csirbd_cluster_exists and 'force_cfg' not in ansible_run_tags
+  tags: [apply]
+
+
+- name: Add cluster config 
+  set_fact:
+    _csirbd_config: "{{ _csirbd_config | union(lookup('template', 'ceph-csi-rbd/cluster.json.j2')) }}"
+  when:
+    - inventory_hostname == k8s_primary_master_name
+    - not _csirbd_cluster_exists or 'force' in ansible_run_tags or 'force_cfg' in ansible_run_tags
+  tags: [apply]
+
+
+- name: Apply cluster ConfigMap
+  k8s:
+    definition: "{{ lookup('template', 'ceph-csi-rbd/configmap.yml.j2') }}"
+    state: present
+  when:
+    - inventory_hostname == k8s_primary_master_name
+    - not _csirbd_cluster_exists or 'force' in ansible_run_tags or 'force_cfg' in ansible_run_tags
+  tags: [apply]
+
+
+# --- Apply Secret ---
+
+- name: User notification
+  debug:
+    msg: "The Secret {{ ceph_client_k8s_secret_name }} in namespace {{ ceph_client_k8s_secret_namespace }} is already defined. Include tag 'force_secret' to force-update the secret."
+  when:
+    - inventory_hostname == k8s_primary_master_name
+    - _csirbd_secret_exists and 'force_secret' not in ansible_run_tags
+  tags: [apply]
+
+
+- name: Apply cluster Secret
+  k8s:
+    definition: "{{ lookup('template', 'ceph-csi-rbd/secret.yml.j2') }}"
+    state: present
+  when:
+    - inventory_hostname == k8s_primary_master_name
+    - not _csirbd_secret_exists or 'force' in ansible_run_tags or 'force_secret' in ansible_run_tags
+  tags: [apply]
+
+
+# --- Apply StorageClass ---
+
+- name: User notification
+  debug:
+    msg: "The StorageClass {{ ceph_client_k8s_sc_name }} in namespace {{ ceph_client_k8s_sc_namespace }} is already defined. Include tag 'force_sc' to force-update the StorageClass."
+  when:
+    - inventory_hostname == k8s_primary_master_name
+    - _csirbd_sc_exists and 'force_sc' not in ansible_run_tags
+  tags: [apply]
+
+
+- name: Apply StorageClass
+  k8s:
+    definition: "{{ lookup('template', 'ceph-csi-rbd/storageclass.yml.j2') }}"
+    state: present
+  when:
+    - inventory_hostname == k8s_primary_master_name
+    - not _csirbd_sc_exists or 'force' in ansible_run_tags or 'force_sc' in ansible_run_tags
+  tags: [apply]
+
+
+# --- Delete StorageClass ---
+
+- name: Delete StorageClass
+  k8s:
+    kind: StorageClass
+    name: "{{ ceph_client_k8s_sc_name }}"
+    state: absent
+  when:
+    - inventory_hostname == k8s_primary_master_name
+  tags: [delete]
+
+
+# --- Delete Secret ---
+
+- name: Delete cluster Secret
+  k8s:
+    kind: Secret
+    name: "{{ ceph_client_k8s_secret_name }}"
+    namespace: "{{ ceph_client_k8s_secret_namespace }}"
+    state: absent
+  when:
+    - inventory_hostname == k8s_primary_master_name
+  tags: [delete]
+
+
+# --- Delete / Update ConfigMap ---
+
+- name: Remove cluster config
+  set_fact:
+    _csirbd_config: "{{ _csirbd_config | json_query(query) | default([]) }}"
+  vars:
+    query: "[?clusterID!='{{ ceph_client_k8s_csi_cid }}']"
+  when:
+    - inventory_hostname == k8s_primary_master_name
+    - _csirbd_cluster_exists
+  tags: [delete]
+
+
+- name: Apply cluster ConfigMap
+  k8s:
+    definition: "{{ lookup('template', 'ceph-csi-rbd/configmap.yml.j2') }}"
+    state: present
+  when:
+    - inventory_hostname == k8s_primary_master_name
+    - _csirbd_cluster_exists
+  tags: [delete]
+
+
+
+
+# - name: Create provider temporay Helm values files (ceph-csi-rdb)
+#   tempfile:
+#     state: file
+#   register: _values
+#   tags:
+#     - apply
+
+
+# - name: Create provider temporay repository directory (ceph-csi-rdb)
+#   tempfile:
+#     state: directory
+#   register: _repository
+#   tags:
+#     - apply
+
+
+# - name: Clone provider repository (ceph-csi-rdb)
+#   shell: >
+#     git clone https://github.com/ceph/ceph-csi {{ _repository.path }}
+#   tags:
+#     - apply
+
+
+# - name: Template provider (ceph-csi-rdb)
+#   template:
+#     src: templates/ceph_client_k8s_provider-ceph-csi-rbd.values.yml.j2
+#     dest: "{{ _values.path }}"
+#   tags:
+#     - apply
+
+
+# - name: Install provider (ceph-csi-rdb)
+#   shell: >
+#     helm install "{{ ceph_client_k8s_provider }}"
+#     --namespace "{{ ceph_client_k8s_provider }}"
+#     --values {{ _values.path }}
+#     {{ _repository.path }}/charts/ceph-csi-rbd
+#   register: _install
+#   failed_when:
+#     - _install.rc != 0 and not "cannot re-use a name that is still in use" in _install.stderr
+#   tags:
+#     - apply
+
+
+# - name: Cleanup provider temporary files (ceph-csi-rdb)
+#   file:
+#     path: "{{ item }}"
+#     state: absent
+#   with_items:
+#     - "{{ _repository.path }}"
+#     - "{{ _values.path }}"
+#   tags:
+#     - apply
+
+
+# - name: Uninstall provider (ceph-csi-rdb)
+#   shell: >
+#     helm uninstall "{{ ceph_client_k8s_provider }}"
+#     --namespace "{{ ceph_client_k8s_provider }}"
+#   register: _install
+#   failed_when:
+#     - _install.rc != 0 and not "cannot re-use a name that is still in use" in _install.stderr
+#   tags:
+#     - delete
+
+
+# - name: Install Ceph-CSI release
+#   shell: >
+#     helm install {{ ceph_client_k8s_csi_release }} {{ ceph_client_k8s_csi_chart }} --repo {{ ceph_client_k8s_csi_repository }} --namespace {{ ceph_client_k8s_csi_namespace }}
+#   ignore_errors: yes
+#   tags:
+#     - never
+#     - apply
+
+
+# - name: Uninstall Ceph-CSI
+#   shell: >
+#     helm delete {{ ceph_client_k8s_csi_release }} --namespace {{ ceph_client_k8s_csi_namespace }}
+#   ignore_errors: yes
+#   tags:
+#     - never
+#     - delete
