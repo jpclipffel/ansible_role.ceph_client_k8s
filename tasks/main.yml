@@ -31,8 +31,6 @@
   tags: [never, apply, delete]
 
 
-
-
 # - name: Apply manifest
 #   k8s:
 #     definition: "{{ lookup('template', 'provider-' + ceph_client_k8s_provider + '.yml.j2') }}"

@@ -18,7 +18,7 @@
     namespace: "{{ item.namespace }}"
   register: "_csirbd_info"
   with_items:
-    - { kind: "ConfigMap",    name: "ceph-csi-config-rbd",               namespace: "{{ ceph_client_k8s_csi_namespace }}"    }
+    - { kind: "ConfigMap",    name: "ceph-csi-config",                   namespace: "{{ ceph_client_k8s_csi_namespace }}"    }
     - { kind: "Secret",       name: "{{ ceph_client_k8s_secret_name }}", namespace: "{{ ceph_client_k8s_secret_namespace }}" }
     - { kind: "StorageClass", name: "{{ ceph_client_k8s_sc_name }}",     namespace: "{{ ceph_client_k8s_sc_namespace }}",    }
   when:
@@ -50,7 +50,7 @@
 
 - name: User notification
   debug:
-    msg: "The ConfigMap ceph-csi-config-rbd in namespace kube-system already defines the clusterID {{ ceph_client_k8s_csi_cid }}. Include tag 'force_cfg' to force-update the cluster."
+    msg: "The ConfigMap ceph-csi-config in namespace kube-system already defines the clusterID {{ ceph_client_k8s_csi_cid }}. Include tag 'force_cfg' to force-update the cluster."
   when:
     - inventory_hostname == k8s_primary_master_name
     - _csirbd_cluster_exists and 'force_cfg' not in ansible_run_tags
