@@ -5,15 +5,18 @@
 ceph_client_k8s_provider: "ceph-csi-rbd"
 
 
-# K8S - StorageClass
-ceph_client_k8s_sc_namespace: "default"
-ceph_client_k8s_sc_name: "{{ ceph_client_k8s_provider }}"
-ceph_client_k8s_sc_default: true
+# ConfigMap
 ceph_client_k8s_mons: []
 ceph_client_k8s_pool: "cephfs_data"
 ceph_client_k8s_fstype: "ext4"
 ceph_client_k8s_reclaimPolicy: "Delete"
 ceph_client_k8s_allowVolumeExpansion: true
+
+
+# K8S - StorageClass
+ceph_client_k8s_sc_namespace: "default"
+ceph_client_k8s_sc_name: "{{ ceph_client_k8s_provider }}"
+ceph_client_k8s_sc_default: true
 
 
 # K8S - Secret
@@ -24,5 +27,6 @@ ceph_client_k8s_key: null
 
 
 # K8S - CSI - ceph-csi-rbd
+ceph_client_k8s_csi_cfgmap_name: "ceph-csi-config-rbd"
 ceph_client_k8s_csi_namespace: "kube-system"
 ceph_client_k8s_csi_cid: ""
