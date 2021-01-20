@@ -16,4 +16,4 @@
 - name: Set facts
   set_fact:
     ceph_client_k8s_key: "{{ _key.stdout | default('') }}"
-    ceph_client_k8s_csi_cid: "{{ _cid.stdout | default('') }}"
+    ceph_client_k8s_cid: "{{ _cid.stdout | default('') }}"
